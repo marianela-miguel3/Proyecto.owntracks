@@ -12,10 +12,6 @@ if not os.path.exists(DATA_FILE):
     with open(DATA_FILE, "w") as f:
         f.write("[]")
 
-@app.route('/')
-def home():
-    return '<h1>¡Hola, mundo! Mi aplicación está corriendo en Heroku.</h1>'
-
 @app.route('/owntracks', methods=['POST'])
 def receive_location():
     data = request.json
@@ -37,5 +33,5 @@ def get_locations():
     return jsonify(ubicaciones)
 
 if __name__ == '__main__':
-    # Para el despliegue en Heroku, usa el puerto dinámico proporcionado
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)
+    # app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
