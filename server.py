@@ -30,6 +30,12 @@ def recibir_ubicacion():
     lon = data.get("lon")
     timestamp = data.get("tst")
 
+    print("Evento:", evento)
+    print("Zona:", zona)
+    print("Lat:", lat)
+    print("Lon:", lon)
+    print("Timestamp:", timestamp)
+
     if lat is None or lon is None:
         print("⚠️ Error: Falta latitud o longitud en la data.")
         return jsonify({"error": "latitud o longitud faltante"}), 400
