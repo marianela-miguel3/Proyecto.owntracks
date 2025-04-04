@@ -53,7 +53,8 @@ def recibir_ubicacion():
     headers = {
         "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Prefer": "return=representation"
     }
 
     try:
@@ -68,7 +69,12 @@ def recibir_ubicacion():
         if response.status_code >= 400:
             return jsonify({"error": "Error al insertar en Supabase", "detalle": response.text}), response.status_code
 
-        return jsonify({"status": "ok", "supabase_response": response.json()}), 201
+        # return jsonify({"status": "ok", "supabase_response": response.json()}), 201
+        return jsonify({
+          "status": "ok",
+          "supabase_status": response.status_code,
+          "supabase_text": response.text
+        }), 201
 
     except Exception as e:
         print("❌ Error al conectar con Supabase:", str(e))
