@@ -1,41 +1,53 @@
 from flask import Flask, request, jsonify
-import json
+import requests
 import os
 
 app = Flask(__name__)
 
-# Archivo donde se guardarán las ubicaciones
-DATA_FILE = "ubicaciones.json"
-
-# Si el archivo no existe, lo creamos con una lista vacía
-if not os.path.exists(DATA_FILE):
-    with open(DATA_FILE, "w") as f:
-        f.write("[]")
-
-@app.route('/')
-def home():
-    return '<h1>¡Hola, mundo! Mi aplicación está corriendo en Heroku.</h1>'
-
-@app.route('/owntracks', methods=['POST'])
-def receive_location():
+SUPABASE_URL = os.getenv('https://pgolwcphlsvwkqwpxmdy.supabase.co')
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+@app.route('/ubicacion', methods=['POST'])
+def recibir_ubicacion():
     data = request.json
-    print("📍 Ubicación recibida:", data)
+    print("📍 Datos recibidos:", data)
 
-    # Guardar en el archivo JSON
-    with open(DATA_FILE, "r+") as file:
-        ubicaciones = json.load(file)  # Cargar datos existentes
-        ubicaciones.append(data)  # Agregar nueva ubicación
-        file.seek(0)  # Mover al inicio del archivo
-        json.dump(ubicaciones, file, indent=4)  # Guardar actualizado
+    # OwnTracks puede mandar varios tipos de mensajes, verificamos si es evento de zona
+    evento = data.get("event")  # 'enter' o 'leave' si es un evento de geozona
+    zona = data.get("desc")     # nombre de la zona (por ejemplo: 'Casa')
 
-    return jsonify({"status": "ok"}), 200
+    lat = data.get("lat")
+    lon = data.get("lon")
+    timestamp = data.get("tst")
 
-@app.route('/ubicaciones', methods=['GET'])
-def get_locations():
-    with open(DATA_FILE, "r") as file:
-        ubicaciones = json.load(file)
-    return jsonify(ubicaciones)
+    # Validación básica
+    if lat is None or lon is None:
+        return jsonify({"error": "latitud o longitud faltante"}), 400
+
+    # Formateamos timestamp si querés pasarlo en formato ISO (opcional)
+    from datetime import datetime
+    fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
+
+    payload = {
+        "latitud": lat,
+        "longitud": lon,
+        "timestamp": fecha,
+        "evento": evento,
+        "zona": zona
+    }
+
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    response = requests.post(
+        f"{SUPABASE_URL}/rest/v1/ubicaciones",
+        json=payload,
+        headers=headers
+    )
+
+    return jsonify({"status": "ok", "supabase_response": response.text}), response.status_code
 
 if __name__ == '__main__':
-    # Para el despliegue en Heroku, usa el puerto dinámico proporcionado
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    app.run()
