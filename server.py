@@ -5,33 +5,36 @@ from datetime import datetime
 
 app = Flask(__name__)
 
-# Leer variables de entorno correctamente
+# Verificamos que las variables de entorno estén bien definidas
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
+if not SUPABASE_URL or not SUPABASE_KEY:
+    print("❌ ERROR: Las variables de entorno de Supabase no están configuradas correctamente.")
+
 @app.route('/')
 def home():
-    return '<h1>¡Hola, mundo! Mi aplicación está corriendo en Heroku.</h1>'
+    return "✅ Servidor Flask en Heroku funcionando correctamente 🚀", 200
 
 @app.route('/ubicacion', methods=['POST'])
 def recibir_ubicacion():
     data = request.json
-    print("📍 Datos recibidos:", data)
+    print("📍 Datos recibidos:", data)  # Log para ver la data en los logs de Heroku
 
-    # Extraer datos
-    evento = data.get("event")  # 'enter' o 'leave' si es un evento de geozona
-    zona = data.get("desc")     # Nombre de la zona (ej: 'Casa')
+    if not data:
+        return jsonify({"error": "No se recibieron datos"}), 400
 
+    evento = data.get("event")
+    zona = data.get("desc")
     lat = data.get("lat")
     lon = data.get("lon")
     timestamp = data.get("tst")
 
-    # Validación
     if lat is None or lon is None:
-        return jsonify({"error": "Latitud o longitud faltante"}), 400
+        print("⚠️ Error: Falta latitud o longitud en la data.")
+        return jsonify({"error": "latitud o longitud faltante"}), 400
 
-    # Convertir timestamp a formato ISO
-    fecha = datetime.utcfromtimestamp(timestamp).isoformat() if timestamp else None
+    fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
 
     payload = {
         "latitud": lat,
@@ -47,18 +50,23 @@ def recibir_ubicacion():
         "Content-Type": "application/json"
     }
 
-    # Enviar datos a Supabase
-    response = requests.post(
-        f"{SUPABASE_URL}/rest/v1/ubicaciones",
-        json=payload,
-        headers=headers
-    )
+    try:
+        response = requests.post(
+            f"{SUPABASE_URL}/rest/v1/ubicaciones",
+            json=payload,
+            headers=headers
+        )
 
-    if response.status_code in [200, 201]:
-        return jsonify({"status": "ok", "supabase_response": response.text}), response.status_code
-    else:
-        return jsonify({"error": "Error al insertar en Supabase", "detalle": response.text}), response.status_code
+        print("🔄 Respuesta de Supabase:", response.status_code, response.text)
 
-# Configuración para Heroku
+        if response.status_code >= 400:
+            return jsonify({"error": "Error al insertar en Supabase", "detalle": response.text}), response.status_code
+
+        return jsonify({"status": "ok", "supabase_response": response.json()}), 201
+
+    except Exception as e:
+        print("❌ Error al conectar con Supabase:", str(e))
+        return jsonify({"error": "Error al conectar con Supabase"}), 500
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
