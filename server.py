@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 import requests
 import os
 from datetime import datetime
+from datetime import timezone, timedelta
+
+ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
 
@@ -44,7 +47,12 @@ def recibir_ubicacion():
         print("⚠️ Error: Falta latitud o longitud en la data.")
         return jsonify({"error": "latitud o longitud faltante"}), 400
 
-    fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
+    # fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
+    fecha = (
+    datetime.fromtimestamp(timestamp, tz=timezone.utc)
+    .astimezone(ARGENTINA_TZ)
+    .isoformat()
+    ) if timestamp else None
 
     payload = {
         "latitud": lat,
