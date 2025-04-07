@@ -23,6 +23,10 @@ def recibir_ubicacion():
 
     if not data:
         return jsonify({"error": "No se recibieron datos"}), 400
+    
+    if data.get("_type") != "location":
+       print("🔁 Ignorando mensaje no relacionado con ubicación (_type distinto de 'location')")
+       return jsonify({"status": "ignored"}), 200
 
     evento = data.get("event")
     zona = data.get("desc")
