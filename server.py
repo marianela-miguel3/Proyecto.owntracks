@@ -24,8 +24,8 @@ def recibir_ubicacion():
     if not data:
         return jsonify({"error": "No se recibieron datos"}), 400
 
-    evento = data.get("evento")
-    zona = data.get("zona")
+    evento = data.get("event")
+    zona = data.get("desc")
     lat = data.get("lat")
     lon = data.get("lon")
     timestamp = data.get("tst")
