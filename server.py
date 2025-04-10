@@ -27,8 +27,10 @@ def recibir_ubicacion():
     if not data:
         return jsonify({"error": "No se recibieron datos"}), 400
     
-    if data.get("_type") != "location":
-       print("🔁 Ignorando mensaje no relacionado con ubicación (_type distinto de 'location')")
+    tipo = data.get("_type")
+
+    if tipo not in ["location", "transition"]:
+       print("🔁 Ignorando mensaje no reconocido (_type no es 'location' ni 'transition')")
        return jsonify({"status": "ignored"}), 200
 
     evento = data.get("event")
@@ -43,8 +45,15 @@ def recibir_ubicacion():
     print("Lon:", lon)
     print("Timestamp:", timestamp)
 
-    if lat is None or lon is None:
-        print("⚠️ Error: Falta latitud o longitud en la data.")
+    # if lat is None or lon is None:
+    #     print("⚠️ Error: Falta latitud o longitud en la data.")
+    #     return jsonify({"error": "latitud o longitud faltante"}), 400
+
+    if tipo == "transition":
+        print("📌 Evento de transición detectado:", evento, "en zona:", zona)
+
+    if tipo == "location" and (lat is None or lon is None):
+        print("⚠️ Error: Falta latitud o longitud en mensaje de tipo 'location'.")
         return jsonify({"error": "latitud o longitud faltante"}), 400
 
     # fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
