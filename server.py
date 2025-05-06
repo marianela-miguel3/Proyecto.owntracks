@@ -71,9 +71,9 @@ def recibir_ubicacion():
 
     # fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
     fecha = (
-    datetime.fromtimestamp(timestamp, tz=timezone.utc)
-    .astimezone(ARGENTINA_TZ)
-    .isoformat()
+        datetime.fromtimestamp(timestamp, tz=timezone.utc)
+        .astimezone(ARGENTINA_TZ)
+        .isoformat()
     ) if timestamp else None
 
     payload = {
