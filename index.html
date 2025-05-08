@@ -45,7 +45,7 @@
     }).addTo(mapa);
 
     async function cargarUbicacion() {
-      const resp = await fetch("https://<pumpkin-crisp-83474-b52f92cd9b5c>.herokuapp.com/ultima_ubicacion");
+      const resp = await fetch("https://pumpkin-crisp-83474.herokuapp.com/ultima_ubicacion");
       const datos = await resp.json();
 
       if (resp.ok) {
