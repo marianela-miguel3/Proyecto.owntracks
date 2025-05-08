@@ -19,57 +19,38 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 def home():
     return "✅ Servidor Flask en Heroku funcionando correctamente 🚀", 200
 
+
 @app.route('/ubicacion', methods=['POST'])
 def recibir_ubicacion():
     data = request.json
-    print("📍 Datos recibidos:", data)  # Log para ver la data en los logs de Heroku
+    print("📍 Datos recibidos:", data)
 
     if not data:
         return jsonify({"error": "No se recibieron datos"}), 400
-    
-    tipo = data.get("_type")
 
-    if tipo not in ["location", "transition"]:
-       print("🔁 Ignorando mensaje no reconocido (_type no es 'location' ni 'transition')")
-       return jsonify({"status": "ignored"}), 200
+    if data.get("_type") != "location":
+        print("🔁 Ignorando mensaje: no es de tipo 'location'")
+        return jsonify({"status": "ignored"}), 200
 
-    evento = data.get("event")
-    zona = data.get("desc")
     lat = data.get("lat")
     lon = data.get("lon")
     timestamp = data.get("tst")
 
-    print("Evento:", evento)
-    print("Zona:", zona)
-    print("Lat:", lat)
-    print("Lon:", lon)
-    print("Timestamp:", timestamp)
+    if lat is None or lon is None:
+        print("⚠️ Error: Faltan coordenadas en el mensaje.")
+        return jsonify({"error": "latitud o longitud faltante"}), 400
 
-    # if lat is None or lon is None:
-    #     print("⚠️ Error: Falta latitud o longitud en la data.")
-    #     return jsonify({"error": "latitud o longitud faltante"}), 400
+    print("📌 Mensaje de LOCALIZACIÓN detectado")
+    print("🌍 Latitud:", lat)
+    print("🌍 Longitud:", lon)
+    print("🏠 Inregions:", data.get("inregions"))
+    print("🔋 Batería:", data.get("batt"))
+    print("🕒 Timestamp:", timestamp)
+    print("🧭 Dirección (t):", data.get("t"))
+    print("🆔 TID:", data.get("tid"))
 
-    if tipo == "transition":
-        # print("📌 Evento de transición detectado:", evento, "en zona:", zona)
-        print("📌 ✅ Mensaje de TRANSICIÓN detectado")
-        print("🗂 Evento:", data.get("event"))
-        print("📍 Zona (desc):", data.get("desc"))
-        print("🕒 Timestamp:", data.get("tst"))
-        print("🧭 Dirección (t):", data.get("t"))
-        print("🆔 TID:", data.get("tid"))
-        # Podés agregar más campos si querés ver todos
+    # Aquí podrías guardar la información en una base de datos si lo deseas
 
-    if tipo == "location" and (lat is None or lon is None):
-        # print("⚠️ Error: Falta latitud o longitud en mensaje de tipo 'location'.")
-        # return jsonify({"error": "latitud o longitud faltante"}), 400
-        print("📌 Mensaje de LOCALIZACIÓN detectado")
-        print("🌍 Lat:", data.get("lat"))
-        print("🌍 Lon:", data.get("lon"))
-        print("🏠 Inregions:", data.get("inregions"))
-        print("🔋 Batería:", data.get("batt"))
-        print("🕒 Timestamp:", data.get("tst"))
-
-    # fecha = datetime.fromtimestamp(timestamp).isoformat() if timestamp else None
     fecha = (
         datetime.fromtimestamp(timestamp, tz=timezone.utc)
         .astimezone(ARGENTINA_TZ)
@@ -79,9 +60,7 @@ def recibir_ubicacion():
     payload = {
         "latitud": lat,
         "longitud": lon,
-        "timestamp": fecha,
-        "evento": evento,
-        "zona": zona
+        "timestamp": fecha
     }
 
     headers = {
@@ -116,3 +95,4 @@ def recibir_ubicacion():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
+
