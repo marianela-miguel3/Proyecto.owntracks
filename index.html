@@ -3,23 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>📍 Última ubicación</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha512-sA+e2nDQqU93FfHCc+dxQ2NwXw6RROHGsyMTPPlWtkGx6RniZT5+YfuWADmYfVAKenL2sMDnP8t3ZqY12SRPVA=="
-    crossorigin=""
-  />
   <style>
     body {
       font-family: sans-serif;
       padding: 20px;
     }
-    #map {
-      height: 400px;
-      margin-top: 20px;
-    }
     #ubicacion {
       white-space: pre-line;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -27,48 +18,25 @@
   <h1>📍 Última ubicación registrada</h1>
   <button onclick="cargarUbicacion()">Conocer ubicación</button>
   <div id="ubicacion">Presioná el botón para ver la ubicación más reciente...</div>
-  <div id="map"></div>
-
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha512-mJOo07KvdD5B3oAOPCVn7Fyc1g7ADUYZ9gkQcYkDEqcpw4iWkgkE5h+Ytnmb3QfdbHF0uQ/G2u4rZRRC1D2zDg=="
-    crossorigin=""
-  ></script>
 
   <script>
-    let mapa = L.map("map").setView([-34.6, -58.4], 5); // Vista inicial (Argentina)
-    let marcador;
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution:
-        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).addTo(mapa);
-
     async function cargarUbicacion() {
-      const resp = await fetch("https://pumpkin-crisp-83474-b52f92cd9b5c.herokuapp.com/ultima_ubicacion");
-      const datos = await resp.json();
+      try {
+        const resp = await fetch("https://pumpkin-crisp-83474.herokuapp.com/ultima_ubicacion");
+        if (!resp.ok) throw new Error("Respuesta no OK");
 
-      if (resp.ok) {
+        const datos = await resp.json();
+
         document.getElementById("ubicacion").textContent = `
 ✅ Última ubicación:
 📍 Latitud: ${datos.latitud}
 📍 Longitud: ${datos.longitud}
 🕒 Timestamp: ${datos.timestamp}
         `;
-
-        const coords = [datos.latitud, datos.longitud];
-        mapa.setView(coords, 16);
-
-        if (marcador) {
-          marcador.setLatLng(coords);
-        } else {
-          marcador = L.marker(coords).addTo(mapa);
-        }
-
-        marcador.bindPopup("📌 Última ubicación registrada").openPopup();
-      } else {
+      } catch (error) {
         document.getElementById("ubicacion").textContent =
-          "❌ Error: " + (datos.error || datos.mensaje);
+          "❌ Error al obtener la ubicación. ¿La app Flask está funcionando?";
+        console.error(error);
       }
     }
   </script>
