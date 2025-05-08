@@ -28,10 +28,10 @@
         const datos = await resp.json();
 
         document.getElementById("ubicacion").textContent = `
-✅ Última ubicación:
-📍 Latitud: ${datos.latitud}
-📍 Longitud: ${datos.longitud}
-🕒 Timestamp: ${datos.timestamp}
+        ✅ Última ubicación:
+        📍 Latitud: ${datos.latitud}
+        📍 Longitud: ${datos.longitud}
+        🕒 Timestamp: ${datos.timestamp}
         `;
       } catch (error) {
         document.getElementById("ubicacion").textContent =

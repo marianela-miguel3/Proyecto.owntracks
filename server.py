@@ -116,6 +116,7 @@ def obtener_ultima_ubicacion():
         datos = response.json()
         if not datos:
             return jsonify({"mensaje": "No hay ubicaciones registradas"}), 404
+        print("Última ubicación:", datos[0])
 
         return jsonify(datos[0]), 200
 
