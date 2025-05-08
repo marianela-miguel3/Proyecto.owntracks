@@ -35,6 +35,7 @@ def recibir_ubicacion():
     lat = data.get("lat")
     lon = data.get("lon")
     timestamp = data.get("tst")
+    zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
 
     if lat is None or lon is None:
         print("⚠️ Error: Faltan coordenadas en el mensaje.")
@@ -46,6 +47,7 @@ def recibir_ubicacion():
     print("🏠 Inregions:", data.get("inregions"))
     print("🔋 Batería:", data.get("batt"))
     print("🕒 Timestamp:", timestamp)
+    print("Zona: ", zona)
     print("🧭 Dirección (t):", data.get("t"))
     print("🆔 TID:", data.get("tid"))
 
