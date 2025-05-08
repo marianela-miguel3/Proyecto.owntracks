@@ -95,6 +95,33 @@ def recibir_ubicacion():
         print("❌ Error al conectar con Supabase:", str(e))
         return jsonify({"error": "Error al conectar con Supabase"}), 500
 
+
+@app.route('/ultima_ubicacion', methods=['GET'])
+def obtener_ultima_ubicacion():
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=timestamp.desc&limit=1"
+
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code != 200:
+            return jsonify({"error": "No se pudo obtener la ubicación", "detalle": response.text}), response.status_code
+
+        datos = response.json()
+        if not datos:
+            return jsonify({"mensaje": "No hay ubicaciones registradas"}), 404
+
+        return jsonify(datos[0]), 200
+
+    except Exception as e:
+        print("❌ Error al consultar Supabase:", str(e))
+        return jsonify({"error": "Error interno"}), 500
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)), debug=True)
 
