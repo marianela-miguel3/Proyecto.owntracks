@@ -9,7 +9,8 @@ ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
 # CORS(app)
-CORS(app, resources={r"/*": {"origins": "*"}})
+# CORS(app, resources={r"/*": {"origins": "*"}})
+CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
 
 # Verificamos que las variables de entorno estén bien definidas
 SUPABASE_URL = os.getenv("SUPABASE_URL")
