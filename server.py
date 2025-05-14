@@ -100,31 +100,31 @@ def recibir_ubicacion():
         return jsonify({"error": "Error al conectar con Supabase"}), 500
 
 
-@app.route('/ultima_ubicacion', methods=['GET'])
-def obtener_ultima_ubicacion():
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json"
-    }
+# @app.route('/ultima_ubicacion', methods=['GET'])
+# def obtener_ultima_ubicacion():
+#     headers = {
+#         "apikey": SUPABASE_KEY,
+#         "Authorization": f"Bearer {SUPABASE_KEY}",
+#         "Content-Type": "application/json"
+#     }
 
-    url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=timestamp.desc&limit=1"
+#     url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=timestamp.desc&limit=1"
 
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            return jsonify({"error": "No se pudo obtener la ubicación", "detalle": response.text}), response.status_code
+#     try:
+#         response = requests.get(url, headers=headers)
+#         if response.status_code != 200:
+#             return jsonify({"error": "No se pudo obtener la ubicación", "detalle": response.text}), response.status_code
 
-        datos = response.json()
-        if not datos:
-            return jsonify({"mensaje": "No hay ubicaciones registradas"}), 404
-        print("Última ubicación:", datos[0])
+#         datos = response.json()
+#         if not datos:
+#             return jsonify({"mensaje": "No hay ubicaciones registradas"}), 404
+#         print("Última ubicación:", datos[0])
 
-        return jsonify(datos[0]), 200
+#         return jsonify(datos[0]), 200
 
-    except Exception as e:
-        print("❌ Error al consultar Supabase:", str(e))
-        return jsonify({"error": "Error interno"}), 500
+#     except Exception as e:
+#         print("❌ Error al consultar Supabase:", str(e))
+#         return jsonify({"error": "Error interno"}), 500
 
 
 if __name__ == '__main__':
