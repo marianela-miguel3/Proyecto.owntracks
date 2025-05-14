@@ -8,7 +8,8 @@ from flask_cors import CORS
 ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
-CORS(app)
+# CORS(app)
+CORS(app, resources={r"/*": {"origins": "*"}})
 
 # Verificamos que las variables de entorno estén bien definidas
 SUPABASE_URL = os.getenv("SUPABASE_URL")
