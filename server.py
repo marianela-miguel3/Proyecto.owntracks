@@ -28,7 +28,7 @@ def recibir_ubicacion_ou_transicion():
         if not data:
             return jsonify({"error": "No se recibieron datos"}), 400
 
-        device_id = data.get("device")
+        device_id = data.get("tid")
         tipo = data.get("_type")
         print("📥 Datos recibidos:", data)
 
