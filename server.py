@@ -67,7 +67,6 @@ def recibir_ubicacion_ou_transicion():
                 "evento": evento,
                 "zona": zona,
                 "timestamp": fecha,
-                "device_id": device_id
             }
             try:
                 resp = requests.post(
