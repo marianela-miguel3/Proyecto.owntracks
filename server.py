@@ -70,7 +70,8 @@ def recibir_ubicacion_ou_transicion():
         "latitud": lat,
         "longitud": lon,
         "evento": evento,
-        "zona": zona
+        "zona": zona,
+        "timestamp": fecha
     }
 
     headers = {
