@@ -49,8 +49,9 @@ def recibir_ubicacion_ou_transicion():
         fecha = (
             datetime.fromtimestamp(timestamp, tz=timezone.utc)
             .astimezone(ARGENTINA_TZ)
-            .replace(second=0, microsecond=0)
-            .isoformat()
+            .strftime("%Y-%m-%d %H:%M")
+            # .replace(second=0, microsecond=0)
+            # .isoformat()
         ) if timestamp else None
 
         headers = {
@@ -110,87 +111,6 @@ def recibir_ubicacion_ou_transicion():
 
 if __name__ == "__main__":
     app.run(debug=True)
-
-
-
-# @app.route('/ubicacion', methods=['POST'])
-# def recibir_ubicacion_ou_transicion():
-#     data = request.json
-#     print("📥 Datos recibidos:", data)
-
-#     if not data:
-#         return jsonify({"error": "No se recibieron datos"}), 400
-
-#     tipo = data.get("_type")
-#     if tipo not in ["location", "transition"]:
-#         print("⚠️ Ignorando mensaje: tipo no válido:", tipo)
-#         return jsonify({"status": "ignored"}), 200
-
-#     lat = data.get("lat")
-#     lon = data.get("lon")
-#     timestamp = data.get("tst")
-#     evento = data.get("event") if tipo == "transition" else None
-#     zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
-
-#     if tipo == "location" and (lat is None or lon is None):
-#         print("⚠️ Error: Faltan coordenadas en el mensaje de ubicación.")
-#         return jsonify({"error": "latitud o longitud faltante"}), 400
-
-#     # fecha = (
-#     #     datetime.fromtimestamp(timestamp, tz=timezone.utc)
-#     #     .astimezone(ARGENTINA_TZ)
-#     #     .isoformat()
-#     # ) if timestamp else None
-#     fecha = (
-#     datetime.fromtimestamp(timestamp, tz=timezone.utc)
-#     .astimezone(ARGENTINA_TZ)
-#     .strftime("%Y-%m-%d %H:%M")
-#     ) if timestamp else None
-
-
-#     print("🧭 Tipo:", tipo)
-#     print("🌍 Lat:", lat)
-#     print("🌍 Lon:", lon)
-#     print("📌 Evento:", evento)
-#     print("📍 Zona:", zona)
-#     print("🕒 Fecha:", fecha)
-
-#     payload = {
-#         "latitud": lat,
-#         "longitud": lon,
-#         "evento": evento,
-#         "zona": zona,
-#         "timestamp": fecha
-#     }
-
-#     headers = {
-#         "apikey": SUPABASE_KEY,
-#         "Authorization": f"Bearer {SUPABASE_KEY}",
-#         "Content-Type": "application/json",
-#         "Prefer": "return=representation"
-#     }
-
-#     try:
-#         response = requests.post(
-#             f"{SUPABASE_URL}/rest/v1/ubicaciones",  # tu tabla unificada
-#             json=payload,
-#             headers=headers
-#         )
-
-#         print("✅ Supabase:", response.status_code, response.text)
-
-#         if response.status_code >= 400:
-#             return jsonify({"error": "Error al insertar en Supabase", "detalle": response.text}), response.status_code
-
-#         return jsonify({
-#             "status": "ok",
-#             "supabase_status": response.status_code,
-#             "supabase_text": response.text
-#         }), 201
-
-    # except Exception as e:
-    #     print("❌ Error al conectar con Supabase:", str(e))
-    #     return jsonify({"error": "Error al conectar con Supabase"}), 500
 
 
 @app.route('/ultima_ubicacion', methods=['GET'])
