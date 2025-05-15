@@ -61,13 +61,14 @@ def recibir_ubicacion_ou_transicion():
             "Prefer": "return=representation"
         }
 
-        def guardar_evento(lat, lon, evento, zona):
+        def guardar_evento(lat, lon, evento, zona, device):
             payload = {
                 "latitud": lat,
                 "longitud": lon,
                 "evento": evento,
                 "zona": zona,
                 "timestamp": fecha,
+                "device": device
             }
             try:
                 resp = requests.post(
@@ -82,26 +83,42 @@ def recibir_ubicacion_ou_transicion():
         if tipo == "transition":
             evento = data.get("event")  # enter o exit
             zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
-            guardar_evento(lat, lon, evento, zona)
+            guardar_evento(lat, lon, evento, zona, device_id)
             return jsonify({"status": "evento transition guardado"}), 201
 
         elif tipo == "location":
             inregions_actual = set(data.get("inregions", []))
-            inregions_anterior = zonas_anteriores.get(device_id, set())
 
-            entradas = inregions_actual - inregions_anterior
-            salidas = inregions_anterior - inregions_actual
+             # Consultar última zona registrada en Supabase para este device
+            try:
+                url_historial = f"{SUPABASE_URL}/rest/v1/ubicaciones?device=eq.{device_id}&order=timestamp.desc&limit=1"
+                respuesta_historial = requests.get(url_historial, headers=headers)
+                ultima_zona = set()
 
-            zonas_anteriores[device_id] = inregions_actual
+                if respuesta_historial.status_code == 200:
+                   registros = respuesta_historial.json()
+                   if registros and registros[0]["zona"]:
+                       ultima_zona = {registros[0]["zona"]}
+            except Exception as e:
+               print("⚠️ No se pudo obtener historial de zonas:", str(e))
+               ultima_zona = set()
+
+            
+            # inregions_anterior = zonas_anteriores.get(device_id, set())
+
+            entradas = inregions_actual - ultima_zona
+            salidas = ultima_zona- inregions_actual
+
+            # zonas_anteriores[device_id] = inregions_actual
 
             for zona in entradas:
-                guardar_evento(lat, lon, "enter", zona)
+                guardar_evento(lat, lon, "enter", zona, device_id)
 
             for zona in salidas:
-                guardar_evento(lat, lon, "leave", zona)
+                guardar_evento(lat, lon, "leave", zona, device_id)
 
             # También se guarda ubicación sin evento
-            guardar_evento(lat, lon, None, None)
+            guardar_evento(lat, lon, None, None, device_id)
 
             return jsonify({"status": "eventos location procesados y guardados"}), 201
 
