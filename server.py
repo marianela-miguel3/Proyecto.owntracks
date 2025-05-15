@@ -24,19 +24,6 @@ def home():
     return "✅ Servidor Flask en Heroku funcionando correctamente 🚀", 200
 
 
-from flask import Flask, request, jsonify
-from datetime import datetime, timezone, timedelta
-import requests
-
-app = Flask(__name__)
-
-# Zona horaria Argentina
-ARGENTINA_TZ = timezone(timedelta(hours=-3))
-
-# Configuración Supabase (reemplazá con tus datos)
-SUPABASE_URL = "https://xxxx.supabase.co"
-SUPABASE_KEY = "TU_API_KEY"
-
 # Diccionario para mantener el estado de zonas anteriores por dispositivo
 zonas_anteriores = {}
 
