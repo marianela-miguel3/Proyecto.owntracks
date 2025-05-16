@@ -43,7 +43,8 @@ def recibir_ubicacion_ou_transicion():
         fecha = (
             datetime.fromtimestamp(timestamp, tz=timezone.utc)
             .astimezone(ARGENTINA_TZ)
-            .strftime("%Y-%m-%d %H:%M")
+            # .strftime("%Y-%m-%d %H:%M")
+            .isoformat()
         ) if timestamp else None
 
         headers = {
@@ -70,8 +71,8 @@ def recibir_ubicacion_ou_transicion():
                             ts_str = ultimo.get("timestamp")
                             if ts_str:
                                 ts_ultimo = datetime.fromisoformat(ts_str)
-                                ahora = datetime.now(ARGENTINA_TZ)
-                                diferencia = (ahora - ts_ultimo).total_seconds()
+                                evento_ts = datetime.fromtimestamp(timestamp, tz=timezone.utc).astimezone(ARGENTINA_TZ)
+                                diferencia = (evento_ts - ts_ultimo).total_seconds()
                                 if diferencia < 300:
                                     print("🛑 Evento duplicado reciente, no se guarda.")
                                     return
