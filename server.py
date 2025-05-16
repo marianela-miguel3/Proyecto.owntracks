@@ -43,8 +43,7 @@ def recibir_ubicacion_ou_transicion():
         fecha = (
             datetime.fromtimestamp(timestamp, tz=timezone.utc)
             .astimezone(ARGENTINA_TZ)
-            # .strftime("%Y-%m-%d %H:%M")
-            .isoformat()
+            .strftime("%Y-%m-%d %H:%M")
         ) if timestamp else None
 
         headers = {
