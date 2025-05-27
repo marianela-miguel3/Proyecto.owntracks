@@ -8,6 +8,87 @@ from flask_cors import CORS
 
 
 # Cargar el pipeline entrenado
+
+def limpiar_y_ordenar(df):
+    import numpy as np
+    import pandas as pd
+
+    df = df.copy()
+
+    # Convertir en NaN los blancos, espacios y el string '5s'
+    df['device'] = df['device'].replace(['', ' ', '  ', '5s'], np.nan)
+
+    # Quitar espacios sobrantes
+    df['device'] = df['device'].astype(str).str.strip()
+
+    # Reemplazar nulos por 'pa'
+    df['device'] = df['device'].fillna('pa')
+
+    # Asegurarse de que timestamp sea datetime
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+
+    # Filtrar solo los dispositivos válidos
+    df = df[df['device'].isin(['ma', 'pa'])]
+
+    # Separar por dispositivo y ordenar por fecha
+    df_pa = df[df['device'] == 'pa'].sort_values('timestamp')
+    df_ma = df[df['device'] == 'ma'].sort_values('timestamp')
+
+    # Unificar nuevamente
+    df = pd.concat([df_pa, df_ma], ignore_index=True)
+
+    return df
+
+
+def agregar_eventos_contexto(df):
+    df = df.copy()
+    df['evento_prev'] = df.groupby('device')['evento'].shift(1)
+    df['evento_next'] = df.groupby('device')['evento'].shift(-1)
+    df['es_relevante'] = (
+        df['evento'].isin(['enter', 'leave']) |
+        (
+            df['evento'].isnull() & (
+                df['evento_prev'].isin(['leave', 'enter']) |
+                df['evento_next'].isin(['leave', 'enter'])
+            )
+        )
+    )
+    return df[df['es_relevante']].copy()
+
+def calcular_diferencias_tiempo(df):
+    df = df.copy()
+    df['dif_tiempo'] = df.groupby(['zona', 'evento', 'device'])['timestamp'].diff()
+    return df
+
+def filtrar_por_diferencia(df, umbral_min=1):
+    df = df.copy()
+    return df[
+        (df['dif_tiempo'].isna()) |
+        (df['dif_tiempo'] > pd.Timedelta(minutes=umbral_min))
+    ]
+
+def extraer_variables(df):
+    df = df.copy()
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['hora'] = df['timestamp'].dt.hour + df['timestamp'].dt.minute / 60
+    df['dia_semana'] = df['timestamp'].dt.weekday
+    df['evento'] = df['evento'].fillna('sin_evento').astype(str).str.lower()
+    df['zona'] = df['zona'].fillna('sin_zona').astype(str).str.lower()
+
+    evento_cat = df['evento'].astype('category')
+    zona_cat = df['zona'].astype('category')
+
+    df['evento_code'] = evento_cat.cat.codes
+    df['zona_code'] = zona_cat.cat.codes
+    df['_encoder_evento'] = [evento_cat.cat.categories] * len(df)
+    df['_encoder_zona'] = [zona_cat.cat.categories] * len(df)
+
+    return df
+
+def seleccionar_variables_numericas(df):
+    return df[['latitud', 'longitud', 'hora', 'dia_semana', 'evento_code', 'zona_code']].fillna(0)
+
+
 modelo = joblib.load('modelo_entrenado.joblib')
 
 ARGENTINA_TZ = timezone(timedelta(hours=-3))
