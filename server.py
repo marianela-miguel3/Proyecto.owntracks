@@ -175,7 +175,7 @@ def recibir_ubicacion():
 
             # Vector de entrada
             X_nuevo_df = pd.DataFrame([[lat, lon, hora, dia_semana, evento_code, zona_code]],
-                          columns=["lat", "lon", "hora", "dia_semana", "evento", "zona"])
+                          columns=["latitud", "longitud", "hora", "dia_semana", "evento_code", "zona_code"])
             X_nuevo_scaled = scaler.transform(X_nuevo_df)
 
             # Predicción
