@@ -16,6 +16,10 @@ modelo_isolation = modelo_data['modelo']
 scaler = modelo_data['scaler']
 encoder_evento = modelo_data['encoder_evento']
 encoder_zona = modelo_data['encoder_zona']
+# Verificar que se cargaron correctamente
+if not all([modelo_isolation, scaler, encoder_evento, encoder_zona]):
+    raise ValueError("❌ Error al cargar el modelo o los encoders desde el archivo .joblib")
+
 
 # Zona horaria de Argentina (ajustá si ya lo tenías definido)
 ARGENTINA_TZ = timezone(timedelta(hours=-3))
