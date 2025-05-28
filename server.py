@@ -174,8 +174,9 @@ def recibir_ubicacion():
             zona_code = encoder_zona.get(zona_procesada, encoder_zona.get("sin_zona", 0))
 
             # Vector de entrada
-            X_nuevo = np.array([[lat, lon, hora, dia_semana, evento_code, zona_code]])
-            X_nuevo_scaled = scaler.transform(X_nuevo)
+            X_nuevo_df = pd.DataFrame([[lat, lon, hora, dia_semana, evento_code, zona_code]],
+                          columns=["lat", "lon", "hora", "dia_semana", "evento", "zona"])
+            X_nuevo_scaled = scaler.transform(X_nuevo_df)
 
             # Predicción
             prediccion = modelo_isolation.predict(X_nuevo_scaled)[0]
@@ -183,7 +184,7 @@ def recibir_ubicacion():
             print(f"🔎 Predicción: {'ANOMALÍA' if es_anomalo else 'Normal'}")
 
             # Guardar también en payload
-            payload["es_anomalo"] = es_anomalo
+            payload["es_anomalo"] = int(es_anomalo)
         except Exception as e:
             print("⚠️ Error en predicción de anomalía:", str(e))
             payload["es_anomalo"] = None  # Valor por defecto si falla
