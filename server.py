@@ -140,12 +140,11 @@ def recibir_ubicacion():
             "Prefer": "return=representation"
         }
 
-        # Datos comunes para guardar en la base
         evento = None
         zona = None
 
         if tipo == "transition":
-            evento = data.get("event")  # enter o leave
+            evento = data.get("event")
             zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
         elif tipo == "location":
             zona = data.get("inregions")[0] if data.get("inregions") else None
@@ -161,7 +160,6 @@ def recibir_ubicacion():
 
         # ---- PREDICCIÓN DE ANOMALÍA ----
         try:
-            # Procesamiento del timestamp
             hora = (
                 datetime.fromtimestamp(timestamp, tz=timezone.utc)
                 .astimezone(ARGENTINA_TZ).hour
@@ -170,28 +168,24 @@ def recibir_ubicacion():
             )
             dia_semana = datetime.fromtimestamp(timestamp, tz=timezone.utc).astimezone(ARGENTINA_TZ).weekday()
 
-            # Limpieza y codificación
-            evento_procesado = (evento or "sin_evento").lower()
-            zona_procesada = (zona or "sin_zona").lower()
+            evento_proc = (evento or "sin_evento").lower()
+            zona_proc = (zona or "sin_zona").lower()
 
-            evento_code = encoder_evento.get(evento_procesado, encoder_evento.get("sin_evento", 0))
-            zona_code = encoder_zona.get(zona_procesada, encoder_zona.get("sin_zona", 0))
+            evento_code = encoder_evento.get(evento_proc, encoder_evento.get("sin_evento", 0))
+            zona_code = encoder_zona.get(zona_proc, encoder_zona.get("sin_zona", 0))
 
-            # Vector de entrada
-            X_nuevo_df = pd.DataFrame([[lat, lon, hora, dia_semana, evento_code, zona_code]],
-                          columns=["latitud", "longitud", "hora", "dia_semana", "evento_code", "zona_code"])
-            X_nuevo_scaled = scaler.transform(X_nuevo_df)
+            X_nuevo = pd.DataFrame([[lat, lon, hora, dia_semana, evento_code, zona_code]],
+                                   columns=["latitud", "longitud", "hora", "dia_semana", "evento_code", "zona_code"])
+            X_nuevo_scaled = scaler.transform(X_nuevo)
 
-            # Predicción
             prediccion = modelo_isolation.predict(X_nuevo_scaled)[0]
             es_anomalo = prediccion == -1
             print(f"🔎 Predicción: {'ANOMALÍA' if es_anomalo else 'Normal'}")
 
-            # Guardar también en payload
             payload["es_anomalo"] = int(es_anomalo)
         except Exception as e:
             print("⚠️ Error en predicción de anomalía:", str(e))
-            payload["es_anomalo"] = None  # Valor por defecto si falla
+            payload["es_anomalo"] = None
 
         # Enviar a Supabase
         try:
@@ -200,15 +194,14 @@ def recibir_ubicacion():
                 json=payload,
                 headers=headers
             )
-            print("✅ Supabase:", resp.status_code, resp.text)
-            return jsonify({"status": "datos guardados"}), 201
+            print("✅ Supabase:", resp.status_code, resp.json())
         except Exception as e:
-            print("❌ Error al conectar con Supabase:", str(e))
-            return jsonify({"error": "Error al guardar datos"}), 500
+            print("❌ Error al guardar en Supabase:", str(e))
+
+        return jsonify({"status": "ok", "anomalo": payload.get("es_anomalo")})
 
     except Exception as e:
-        print("❌ Error general:", str(e))
-        return jsonify({"error": "Error interno del servidor"}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 
