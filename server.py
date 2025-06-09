@@ -11,7 +11,9 @@ from flask_cors import CORS
 ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
 # Cargar modelos
-pipeline = joblib.load("pipeline_anomalias.joblib")
+# pipeline = joblib.load("pipeline_anomalias.joblib")
+pipeline, modelo_horarios = joblib.load("pipeline_anomalias.joblib")
+
 modelo_horario, scaler_hora = joblib.load("modelo_horarios.joblib")
 
 # Extraer componentes del pipeline
