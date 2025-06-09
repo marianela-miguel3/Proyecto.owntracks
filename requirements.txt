@@ -7,3 +7,4 @@ pandas
 joblib
 scikit-learn
 numpy
+python-dotenv
