@@ -2,17 +2,37 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import pandas as pd
-import joblib
 import numpy as np
+import joblib
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 
-# Zona horaria de Argentina
-ARGENTINA_TZ = timezone(timedelta(hours=-3))
+# ========================
+# 🔁 FUNCIONES AUXILIARES
+# ========================
+def extraer_variables(df):
+    df = df.copy()
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['hora'] = df['timestamp'].dt.hour + df['timestamp'].dt.minute / 60
+    df['dia_semana'] = df['timestamp'].dt.weekday
+    df['evento'] = df['evento'].fillna('sin_evento').astype(str).str.lower()
+    df['zona'] = df['zona'].fillna('sin_zona').astype(str).str.lower()
+    df['latitud'] = df['latitud'].astype(str).str.replace(',', '.').astype(float)
+    df['longitud'] = df['longitud'].astype(str).str.replace(',', '.').astype(float)
+    return df
 
-# Cargar modelos como pipelines completos
-pipeline_anomalias = joblib.load("pipeline_anomalias.joblib")
-modelo_horarios = joblib.load("modelo_horarios.joblib")  # Este ya incluye scaler y modelo
+# ========================
+# 🚀 CARGA DE MODELOS
+# ========================
+modelo_general = joblib.load("modelo_general.joblib")
+transformer_general = joblib.load("transformer_general.joblib")
+modelo_horario = joblib.load("modelo_horario.joblib")
+scaler_horario = joblib.load("scaler_horario.joblib")
+
+# ========================
+# 🌎 CONFIG SERVIDOR
+# ========================
+ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
@@ -22,7 +42,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 @app.route('/')
 def home():
-    return "✅ Servidor Flask funcionando con modelos actualizados 🚀", 200
+    return "✅ Servidor Flask funcionando correctamente", 200
 
 @app.route('/ubicacion', methods=['POST'])
 def recibir_ubicacion():
@@ -31,26 +51,32 @@ def recibir_ubicacion():
         if not data:
             return jsonify({"error": "No se recibieron datos"}), 400
 
+        device_id = data.get("tid")
         tipo = data.get("_type")
+        print("📥 Datos recibidos:", data)
+
         if tipo not in ["location", "transition"]:
+            print("⚠️ Tipo no válido:", tipo)
             return jsonify({"status": "ignored"}), 200
-
-        timestamp = data.get("tst")
-        ts = (
-            datetime.fromtimestamp(timestamp, tz=timezone.utc)
-            .astimezone(ARGENTINA_TZ)
-        ) if timestamp else None
-
-        fecha = ts.strftime("%Y-%m-%d %H:%M") if ts else None
-
-        evento = data.get("event") if tipo == "transition" else None
-        zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
-        if tipo == "location" and not zona:
-            zona = (data.get("inregions")[0] if data.get("inregions") else None)
 
         lat = data.get("lat")
         lon = data.get("lon")
-        device_id = data.get("tid")
+        timestamp = data.get("tst")
+
+        fecha = (
+            datetime.fromtimestamp(timestamp, tz=timezone.utc)
+            .astimezone(ARGENTINA_TZ)
+            .strftime("%Y-%m-%d %H:%M")
+        ) if timestamp else None
+
+        evento = None
+        zona = None
+
+        if tipo == "transition":
+            evento = data.get("event")
+            zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
+        elif tipo == "location":
+            zona = data.get("inregions")[0] if data.get("inregions") else None
 
         payload = {
             "latitud": lat,
@@ -61,39 +87,44 @@ def recibir_ubicacion():
             "device": device_id
         }
 
-        # --------- PREDICCIÓN DE ANOMALÍA ---------
         try:
-            df_nuevo = pd.DataFrame([{
-                "timestamp": ts,
+            # Preparar datos
+            dato = {
                 "latitud": lat,
                 "longitud": lon,
                 "evento": evento,
-                "zona": zona
-            }])
+                "zona": zona,
+                "timestamp": fecha
+            }
+            df = pd.DataFrame([dato])
+            df_proc = extraer_variables(df)
 
             # Predicción general
-            pred_general = pipeline_anomalias.predict(df_nuevo)[0]
+            X_general = transformer_general.transform(df_proc)
+            pred_general = modelo_general.predict(X_general)[0]
 
             # Predicción horaria
-            hora = ts.hour + ts.minute / 60
-            pred_horario = modelo_horarios.predict([[hora]])[0]
+            X_hora = scaler_horario.transform(df_proc[["hora"]])
+            pred_hora = modelo_horario.predict(X_hora)[0]
 
-            # Anomalía combinada
-            anomalia_final = -1 if pred_general == -1 or pred_horario == -1 else 1
-            payload["es_anomalo"] = int(anomalia_final)
+            # Combinación
+            es_anomalo = 1 if pred_general == -1 or pred_hora == -1 else 0
+            payload["es_anomalo"] = es_anomalo
+            print(f"🔎 General: {pred_general}, Horario: {pred_hora} → Final: {'ANOMALÍA' if es_anomalo else 'Normal'}")
 
         except Exception as e:
             print("⚠️ Error en predicción:", str(e))
             payload["es_anomalo"] = None
 
-        # --------- GUARDAR EN SUPABASE ---------
+        # Guardar en Supabase
+        headers = {
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Content-Type": "application/json",
+            "Prefer": "return=representation"
+        }
+
         try:
-            headers = {
-                "apikey": SUPABASE_KEY,
-                "Authorization": f"Bearer {SUPABASE_KEY}",
-                "Content-Type": "application/json",
-                "Prefer": "return=representation"
-            }
             resp = requests.post(
                 f"{SUPABASE_URL}/rest/v1/ubicaciones",
                 json=payload,
@@ -107,29 +138,3 @@ def recibir_ubicacion():
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-@app.route('/ultima_ubicacion', methods=['GET'])
-def obtener_ultima_ubicacion():
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=timestamp.desc&limit=1"
-
-    try:
-        response = requests.get(url, headers=headers)
-        if response.status_code != 200:
-            return jsonify({"error": "No se pudo obtener la ubicación", "detalle": response.text}), response.status_code
-
-        datos = response.json()
-        if not datos:
-            return jsonify({"mensaje": "No hay ubicaciones registradas"}), 404
-
-        return jsonify(datos[0]), 200
-
-    except Exception as e:
-        return jsonify({"error": "Error interno"}), 500
-
-
