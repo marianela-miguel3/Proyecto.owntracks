@@ -10,15 +10,9 @@ from flask_cors import CORS
 # Zona horaria de Argentina
 ARGENTINA_TZ = timezone(timedelta(hours=-3))
 
-# Cargar modelos
-# pipeline = joblib.load("pipeline_anomalias.joblib")
-pipeline, modelo_horarios = joblib.load("pipeline_anomalias.joblib")
-
-modelo_horario, scaler_hora = joblib.load("modelo_horarios.joblib")
-
-# Extraer componentes del pipeline
-transformer = pipeline.named_steps['preprocesamiento_completo'].named_steps['column_transformer']
-modelo_general = pipeline.named_steps['modelo']
+# Cargar modelos como pipelines completos
+pipeline_anomalias = joblib.load("pipeline_anomalias.joblib")
+modelo_horarios = joblib.load("modelo_horarios.joblib")  # Este ya incluye scaler y modelo
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
@@ -28,8 +22,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 @app.route('/')
 def home():
-    return "✅ Servidor Flask actualizado funcionando correctamente 🚀", 200
-
+    return "✅ Servidor Flask funcionando con modelos actualizados 🚀", 200
 
 @app.route('/ubicacion', methods=['POST'])
 def recibir_ubicacion():
@@ -43,11 +36,12 @@ def recibir_ubicacion():
             return jsonify({"status": "ignored"}), 200
 
         timestamp = data.get("tst")
-        fecha = (
+        ts = (
             datetime.fromtimestamp(timestamp, tz=timezone.utc)
             .astimezone(ARGENTINA_TZ)
-            .strftime("%Y-%m-%d %H:%M")
         ) if timestamp else None
+
+        fecha = ts.strftime("%Y-%m-%d %H:%M") if ts else None
 
         evento = data.get("event") if tipo == "transition" else None
         zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
@@ -69,8 +63,6 @@ def recibir_ubicacion():
 
         # --------- PREDICCIÓN DE ANOMALÍA ---------
         try:
-            # Preparar el dato como DataFrame
-            ts = datetime.fromtimestamp(timestamp, tz=timezone.utc).astimezone(ARGENTINA_TZ)
             df_nuevo = pd.DataFrame([{
                 "timestamp": ts,
                 "latitud": lat,
@@ -79,18 +71,17 @@ def recibir_ubicacion():
                 "zona": zona
             }])
 
-            # General
-            X_general = transformer.transform(pipeline.named_steps['preprocesamiento_completo'].named_steps['preprocesamiento_funcional'].transform(df_nuevo))
-            pred_general = modelo_general.predict(X_general)[0]
+            # Predicción general
+            pred_general = pipeline_anomalias.predict(df_nuevo)[0]
 
-            # Horario
+            # Predicción horaria
             hora = ts.hour + ts.minute / 60
-            X_hora = scaler_hora.transform([[hora]])
-            pred_horario = modelo_horario.predict(X_hora)[0]
+            pred_horario = modelo_horarios.predict([[hora]])[0]
 
-            # Anomalía final
-            anomalia_final = -1 if (pred_general == -1 or pred_horario == -1) else 1
+            # Anomalía combinada
+            anomalia_final = -1 if pred_general == -1 or pred_horario == -1 else 1
             payload["es_anomalo"] = int(anomalia_final)
+
         except Exception as e:
             print("⚠️ Error en predicción:", str(e))
             payload["es_anomalo"] = None
@@ -117,7 +108,6 @@ def recibir_ubicacion():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/ultima_ubicacion', methods=['GET'])
 def obtener_ultima_ubicacion():
     headers = {
@@ -141,4 +131,5 @@ def obtener_ultima_ubicacion():
 
     except Exception as e:
         return jsonify({"error": "Error interno"}), 500
+
 
