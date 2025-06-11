@@ -51,50 +51,41 @@ def recibir_ubicacion():
         if not data:
             return jsonify({"error": "No se recibieron datos"}), 400
 
-        device_id = data.get("tid")
-        tipo = data.get("_type")
         print("📥 Datos recibidos:", data)
 
-        if tipo not in ["location", "transition"]:
-            print("⚠️ Tipo no válido:", tipo)
-            return jsonify({"status": "ignored"}), 200
+        # Extraer datos esperados del formato manual
+        lat = data.get("latitud")
+        lon = data.get("longitud")
+        timestamp_str = data.get("timestamp")
+        evento = data.get("evento", None)
+        zona = data.get("zona", None)
+        device_id = data.get("device", "sin_tid")
 
-        lat = data.get("lat")
-        lon = data.get("lon")
-        timestamp = data.get("tst")
-
+        # Parsear fecha
         fecha = (
-            datetime.fromtimestamp(timestamp, tz=timezone.utc)
-            .astimezone(ARGENTINA_TZ)
-            .strftime("%Y-%m-%d %H:%M")
-        ) if timestamp else None
+            datetime.strptime(timestamp_str, "%Y-%m-%d %H:%M:%S")
+            if timestamp_str else None
+        )
+        fecha_str = fecha.strftime("%Y-%m-%d %H:%M:%S") if fecha else None
 
-        evento = None
-        zona = None
-
-        if tipo == "transition":
-            evento = data.get("event")
-            zona = data.get("desc") or (data.get("inregions")[0] if data.get("inregions") else None)
-        elif tipo == "location":
-            zona = data.get("inregions")[0] if data.get("inregions") else None
-
+        # Armar payload
         payload = {
             "latitud": lat,
             "longitud": lon,
             "evento": evento,
             "zona": zona,
-            "timestamp": fecha,
+            "timestamp": fecha_str,
             "device": device_id
         }
 
         try:
-            # Preparar datos
+            # Preparar dataframe para predicción
             dato = {
                 "latitud": lat,
                 "longitud": lon,
                 "evento": evento,
                 "zona": zona,
-                "timestamp": fecha
+                "timestamp": fecha_str
             }
             df = pd.DataFrame([dato])
             df_proc = extraer_variables(df)
@@ -107,7 +98,7 @@ def recibir_ubicacion():
             X_hora = scaler_horario.transform(df_proc[["hora"]])
             pred_hora = modelo_horario.predict(X_hora)[0]
 
-            # Combinación
+            # Resultado combinado
             es_anomalo = 1 if pred_general == -1 or pred_hora == -1 else 0
             payload["es_anomalo"] = es_anomalo
             print(f"🔎 General: {pred_general}, Horario: {pred_hora} → Final: {'ANOMALÍA' if es_anomalo else 'Normal'}")
@@ -116,7 +107,7 @@ def recibir_ubicacion():
             print("⚠️ Error en predicción:", str(e))
             payload["es_anomalo"] = None
 
-        # Guardar en Supabase
+        # Enviar a Supabase
         headers = {
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
@@ -137,4 +128,6 @@ def recibir_ubicacion():
         return jsonify({"status": "ok", "anomalo": payload.get("es_anomalo")})
 
     except Exception as e:
+        print("❌ Error general:", str(e))
         return jsonify({"error": str(e)}), 500
+
