@@ -1,3 +1,4 @@
+from twilio.rest import Client
 from flask import Flask, request, jsonify
 import requests
 import os
@@ -33,6 +34,12 @@ scaler_horario = joblib.load("scaler_horario.joblib")
 # 🌎 CONFIG SERVIDOR
 # ========================
 ARGENTINA_TZ = timezone(timedelta(hours=-3))
+
+# Variables de entorno o directas
+TWILIO_SID = os.getenv("TWILIO_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER")  # número de Twilio
+TWILIO_TO_NUMBER = os.getenv("TWILIO_TO_NUMBER")  # tu número para recibir alertas
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
@@ -102,6 +109,23 @@ def recibir_ubicacion():
             es_anomalo = 1 if pred_general == -1 or pred_hora == -1 else 0
             payload["es_anomalo"] = es_anomalo
             print(f"🔎 General: {pred_general}, Horario: {pred_hora} → Final: {'ANOMALÍA' if es_anomalo else 'Normal'}")
+
+            if es_anomalo == 1:
+                try:
+                    client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
+                    mensaje_alerta = f"🚨 ALERTA: Anomalía detectada\n" \
+                                      f"🕒 Fecha y hora: {fecha_str}\n" \
+                                      f"📍 Latitud: {lat}\n" \
+                                      f"📍 Longitud: {lon}"
+                    sms = client.messages.create(
+                        body=mensaje_alerta,
+                        from_=TWILIO_FROM_NUMBER,
+                        to=TWILIO_TO_NUMBER
+                    )
+                    print(f"📤 SMS enviado: SID {sms.sid}")
+                except Exception as sms_error:
+                   print("❌ Error al enviar SMS:", str(sms_error))
+
 
         except Exception as e:
             print("⚠️ Error en predicción:", str(e))
