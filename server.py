@@ -140,7 +140,8 @@ def obtener_ultima_ubicacion():
     }
 
     # Ordenar por fecha más reciente
-    url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=timestamp.desc&limit=1"
+    # url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=timestamp.desc&limit=1"
+    url = f"{SUPABASE_URL}/rest/v1/ubicaciones?order=id.desc&limit=1"
 
     try:
         response = requests.get(url, headers=headers)
