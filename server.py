@@ -190,28 +190,28 @@ def obtener_ultima_ubicacion():
         print("❌ Error al consultar Supabase:", str(e))
         return jsonify({"error": "Error interno"}), 500
 
-@app.route('/responder_alerta', methods=['POST'])
-def responder_alerta():
-    try:
-        mensaje = request.form.get('Body', '').strip().lower()
-        numero = request.form.get('From')
-        print(f"📨 Respuesta recibida de {numero}: {mensaje}")
+# @app.route('/responder_alerta', methods=['POST'])
+# def responder_alerta():
+#     try:
+#         mensaje = request.form.get('Body', '').strip().lower()
+#         numero = request.form.get('From')
+#         print(f"📨 Respuesta recibida de {numero}: {mensaje}")
 
-        respuesta = MessagingResponse()
+#         respuesta = MessagingResponse()
 
-        if mensaje in ['si', 'sí']:
-            # Aquí podrías activar algo más, como guardar en Supabase o activar un protocolo
-            respuesta.message("✅ Protocolo de seguridad ACTIVADO. Gracias por confirmar.")
-            print("🚨 Se activó el protocolo de seguridad.")
-        elif mensaje == 'no':
-            respuesta.message("❎ Anomalía descartada. Gracias por tu respuesta.")
-            print("ℹ️ Anomalía descartada por el tutor.")
-        else:
-            respuesta.message("❓ Respuesta no entendida. Por favor respondé con 'SI' o 'NO'.")
-            print("⚠️ Respuesta inválida.")
+#         if mensaje in ['si', 'sí']:
+#             # Aquí podrías activar algo más, como guardar en Supabase o activar un protocolo
+#             respuesta.message("✅ Protocolo de seguridad ACTIVADO. Gracias por confirmar.")
+#             print("🚨 Se activó el protocolo de seguridad.")
+#         elif mensaje == 'no':
+#             respuesta.message("❎ Anomalía descartada. Gracias por tu respuesta.")
+#             print("ℹ️ Anomalía descartada por el tutor.")
+#         else:
+#             respuesta.message("❓ Respuesta no entendida. Por favor respondé con 'SI' o 'NO'.")
+#             print("⚠️ Respuesta inválida.")
 
-        return str(respuesta)
+#         return str(respuesta)
 
-    except Exception as e:
-        print("❌ Error procesando respuesta:", str(e))
-        return "Error", 500
+#     except Exception as e:
+#         print("❌ Error procesando respuesta:", str(e))
+#         return "Error", 500
