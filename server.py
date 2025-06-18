@@ -41,6 +41,9 @@ TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_FROM_NUMBER = os.getenv("TWILIO_FROM_NUMBER")  # número de Twilio
 TWILIO_TO_NUMBER = os.getenv("TWILIO_TO_NUMBER")  # tu número para recibir alertas
+TWILIO_FROM_NUMBER_LLAMADA=os.getenv("TWILIO_FROM_NUMBER_LLAMADA")   # número de Twilio con voz
+NUMERO_TELEFONO_DESTINO_LLAMADA=os.getenv("NUMERO_TELEFONO_DESTINO_LLAMADA")
+
 
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
@@ -116,7 +119,7 @@ def recibir_ubicacion():
                     client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
                     mensaje_alerta = f"🚨 ALERTA: Anomalía detectada\n" \
                                       f"🕒 Fecha y hora: {fecha_str}\n" \
-                                      f"https://www.google.com/maps?q={lat},{lon}"\
+                                      f"https://www.google.com/maps?q={lat},{lon}" \
                                       f"¿Confirmás que es una anomalía?\n" \
                                       f"Respondé *SI* para activar el protocolo de seguridad o *NO* para ignorar."
                     sms = client.messages.create(
@@ -202,6 +205,21 @@ def responder_alerta():
             # Aquí podrías activar algo más, como guardar en Supabase o activar un protocolo
             respuesta.message("✅ Protocolo de seguridad ACTIVADO. Gracias por confirmar.")
             print("🚨 Se activó el protocolo de seguridad.")
+
+               # 👉 Iniciar llamada automática
+            client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
+
+            llamada = client.calls.create(
+                # Podés usar esto directamente con TwiML embebido...
+                twiml='<Response><Say voice="alice" language="es-ES">Se ha detectado un movimiento inusual en la zona. Estamos dando aviso a la comisaría más cercana.</Say></Response>',
+                
+                # ... o bien redirigir a una URL externa que devuelva TwiML (opcional)
+                # url="https://tu-app.herokuapp.com/voz_alerta",
+
+                from_=TWILIO_FROM_NUMBER_LLAMADA,   # número de Twilio con voz
+                to=NUMERO_TELEFONO_DESTINO_LLAMADA          # a quién llamar (tutor/responsable)
+            )
+            print(f"📞 Llamada iniciada. SID: {llamada.sid}")
         elif mensaje == 'no':
             respuesta.message("❎ Anomalía descartada. Gracias por tu respuesta.")
             print("ℹ️ Anomalía descartada por el tutor.")
