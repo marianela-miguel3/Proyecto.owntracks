@@ -7,6 +7,7 @@ import numpy as np
 import joblib
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
+from twilio.twiml.messaging_response import MessagingResponse
 
 # ========================
 # 🔁 FUNCIONES AUXILIARES
@@ -116,7 +117,9 @@ def recibir_ubicacion():
                     mensaje_alerta = f"🚨 ALERTA: Anomalía detectada\n" \
                                       f"🕒 Fecha y hora: {fecha_str}\n" \
                                       f"📍 Latitud: {lat}\n" \
-                                      f"📍 Longitud: {lon}"
+                                      f"📍 Longitud: {lon}"\
+                                      f"¿Confirmás que es una anomalía?\n" \
+                                      f"Respondé *SI* para activar el protocolo de seguridad o *NO* para ignorar."
                     sms = client.messages.create(
                         body=mensaje_alerta,
                         from_=TWILIO_FROM_NUMBER,
@@ -187,3 +190,28 @@ def obtener_ultima_ubicacion():
         print("❌ Error al consultar Supabase:", str(e))
         return jsonify({"error": "Error interno"}), 500
 
+@app.route('/responder_alerta', methods=['POST'])
+def responder_alerta():
+    try:
+        mensaje = request.form.get('Body', '').strip().lower()
+        numero = request.form.get('From')
+        print(f"📨 Respuesta recibida de {numero}: {mensaje}")
+
+        respuesta = MessagingResponse()
+
+        if mensaje in ['si', 'sí']:
+            # Aquí podrías activar algo más, como guardar en Supabase o activar un protocolo
+            respuesta.message("✅ Protocolo de seguridad ACTIVADO. Gracias por confirmar.")
+            print("🚨 Se activó el protocolo de seguridad.")
+        elif mensaje == 'no':
+            respuesta.message("❎ Anomalía descartada. Gracias por tu respuesta.")
+            print("ℹ️ Anomalía descartada por el tutor.")
+        else:
+            respuesta.message("❓ Respuesta no entendida. Por favor respondé con 'SI' o 'NO'.")
+            print("⚠️ Respuesta inválida.")
+
+        return str(respuesta)
+
+    except Exception as e:
+        print("❌ Error procesando respuesta:", str(e))
+        return "Error", 500
