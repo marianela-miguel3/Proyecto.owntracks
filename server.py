@@ -368,50 +368,24 @@ def responder_alerta():
         print("❌ Error procesando respuesta:", str(e))
         return "Error", 500
     
-# @app.route('/ruta/<dia>', methods=['GET'])
-# def ruta_dia(dia):
-#     dias_validos = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-
-#     dia = dia.lower()
-#     if dia not in dias_validos:
-#         return jsonify({"error": "Día inválido, usar monday a friday"}), 400
-
-#     # Convertir a formato con mayúscula inicial para comparar
-#     dia_nombre = dia.capitalize()
-
-#     # Obtener coordenadas filtradas
-#     coordenadas, error = obtener_ubicaciones_por_dia(dia_nombre)
-#     if error:
-#         return jsonify({"error": error}), 404
-
-#     # Instanciar cliente ORS
-#     API_KEY = os.getenv("ORS_API_KEY")  # asegurate que esté en variables de entorno
-#     client = openrouteservice.Client(key=API_KEY)
-
-#     try:
-#         ruta = client.directions(
-#             coordinates=coordenadas,
-#             profile='foot-walking',
-#             format='geojson'
-#         )
-#     except openrouteservice.exceptions.ApiError as e:
-#         return jsonify({"error": f"Error ORS: {str(e)}"}), 500
-
-#     return jsonify(ruta)
-
 @app.route('/ruta/<dia>', methods=['GET'])
 def ruta_dia(dia):
     dias_validos = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+
     dia = dia.lower()
     if dia not in dias_validos:
         return jsonify({"error": "Día inválido, usar monday a friday"}), 400
+
+    # Convertir a formato con mayúscula inicial para comparar
     dia_nombre = dia.capitalize()
 
-    coordenadas, df_filtrado, error = obtener_ubicaciones_por_dia(dia_nombre)
+    # Obtener coordenadas filtradas
+    coordenadas, error = obtener_ubicaciones_por_dia(dia_nombre)
     if error:
         return jsonify({"error": error}), 404
 
-    API_KEY = os.getenv("ORS_API_KEY")
+    # Instanciar cliente ORS
+    API_KEY = os.getenv("ORS_API_KEY")  # asegurate que esté en variables de entorno
     client = openrouteservice.Client(key=API_KEY)
 
     try:
@@ -423,17 +397,4 @@ def ruta_dia(dia):
     except openrouteservice.exceptions.ApiError as e:
         return jsonify({"error": f"Error ORS: {str(e)}"}), 500
 
-    # Además devolver los puntos con info que querés mostrar en popups
-    puntos_info = []
-    for _, row in df_filtrado.iterrows():
-        puntos_info.append({
-            "lat": row['latitud'],
-            "lng": row['longitud'],
-            "hora": row['timestamp'].strftime('%H:%M'),
-            "direccion": row['direccion'] if pd.notnull(row['direccion']) else "Sin dirección"
-        })
-
-    return jsonify({
-        "ruta": ruta,
-        "puntos": puntos_info
-    })
+    return jsonify(ruta)
