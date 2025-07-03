@@ -72,57 +72,6 @@ def obtener_direccion(lat, lon):
         return "Error al obtener dirección"
     
 
-# def obtener_ubicaciones_por_dia(dia_semana_nombre):
-#     """
-#     Consulta Supabase para obtener las ubicaciones filtrando por día de la semana
-#     dia_semana_nombre: nombre del día en inglés con inicial mayúscula, ej: 'Monday'
-#     """
-#     headers = {
-#         "apikey": SUPABASE_KEY,
-#         "Authorization": f"Bearer {SUPABASE_KEY}",
-#         "Content-Type": "application/json"
-#     }
-
-#     # Traer datos (puede ser mucho, luego optimizar paginación)
-#     url = f"{SUPABASE_URL}/rest/v1/ubicaciones?select=latitud,longitud,timestamp,direccion&order=timestamp.asc"
-#     response = requests.get(url, headers=headers)
-
-#     if response.status_code != 200:
-#         return None, f"Error al obtener datos: {response.status_code}"
-
-#     datos = response.json()
-#     if not datos:
-#         return None, "No hay datos"
-
-#     # Convertir a DataFrame
-#     df = pd.DataFrame(datos)
-#     df['timestamp'] = pd.to_datetime(df['timestamp'])
-#     df['dia_semana'] = df['timestamp'].dt.day_name()
-
-#     # Filtrar por día pedido
-#     df_filtrado = df[df['dia_semana'] == dia_semana_nombre]
-
-#     # Filtrar coordenadas válidas (limpio)
-#     df_filtrado = df_filtrado[
-#         (df_filtrado['latitud'] < 0) & (df_filtrado['latitud'] > -60) &
-#         (df_filtrado['longitud'] < -50) & (df_filtrado['longitud'] > -70)
-#     ]
-
-#     if df_filtrado.empty:
-#         return None, "No hay datos para ese día"
-
-#     # Ordenar por timestamp
-#     df_filtrado = df_filtrado.sort_values('timestamp')
-
-#     # Extraer lista de coordenadas para ORS
-#     coords = df_filtrado[['longitud', 'latitud']].values.tolist()
-
-#     # Reducir puntos si hay muchos
-#     if len(coords) > 50:
-#         coords = coords[::5]
-
-#     return coords, None
-
 def obtener_ubicaciones_por_dia(dia_semana_nombre):
     """
     Consulta Supabase para obtener las ubicaciones filtrando por día de la semana
@@ -134,38 +83,45 @@ def obtener_ubicaciones_por_dia(dia_semana_nombre):
         "Content-Type": "application/json"
     }
 
+    # Traer datos (puede ser mucho, luego optimizar paginación)
     url = f"{SUPABASE_URL}/rest/v1/ubicaciones?select=latitud,longitud,timestamp,direccion&order=timestamp.asc"
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        return None, None, f"Error al obtener datos: {response.status_code}"
+        return None, f"Error al obtener datos: {response.status_code}"
 
     datos = response.json()
     if not datos:
-        return None, None, "No hay datos"
+        return None, "No hay datos"
 
+    # Convertir a DataFrame
     df = pd.DataFrame(datos)
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['dia_semana'] = df['timestamp'].dt.day_name()
 
+    # Filtrar por día pedido
     df_filtrado = df[df['dia_semana'] == dia_semana_nombre]
 
+    # Filtrar coordenadas válidas (limpio)
     df_filtrado = df_filtrado[
         (df_filtrado['latitud'] < 0) & (df_filtrado['latitud'] > -60) &
         (df_filtrado['longitud'] < -50) & (df_filtrado['longitud'] > -70)
     ]
 
     if df_filtrado.empty:
-        return None, None, "No hay datos para ese día"
+        return None, "No hay datos para ese día"
 
+    # Ordenar por timestamp
     df_filtrado = df_filtrado.sort_values('timestamp')
-    coords = df_filtrado[['longitud', 'latitud']].dropna().values.tolist()
 
+    # Extraer lista de coordenadas para ORS
+    coords = df_filtrado[['longitud', 'latitud']].values.tolist()
+
+    # Reducir puntos si hay muchos
     if len(coords) > 50:
         coords = coords[::5]
 
-    return coords, df_filtrado, None
-
+    return coords, None
 
 
 @app.route('/')
