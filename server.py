@@ -59,13 +59,13 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
 
 
-# def obtener_direccion(lat, lon):
-#     try:
-#         location = reverse((lat, lon), language='es')
-#         return location.address if location else "Dirección no encontrada"
-#     except Exception as e:
-#         print("⚠️ Error al obtener dirección:", str(e))
-#         return "Error al obtener dirección"
+def obtener_direccion(lat, lon):
+    try:
+        location = reverse((lat, lon), language='es')
+        return location.address if location else "Dirección no encontrada"
+    except Exception as e:
+        print("⚠️ Error al obtener dirección:", str(e))
+        return "Error al obtener dirección"
     
 
 def obtener_ubicaciones_por_dia(dia_semana_nombre):
@@ -140,7 +140,6 @@ def recibir_ubicacion():
         evento = data.get("evento", None)
         zona = data.get("zona", None)
         device_id = data.get("device", "sin_tid")
-        direccion = data.get("direccion", None)
 
         # Parsear fecha
         fecha = (
@@ -156,16 +155,15 @@ def recibir_ubicacion():
             "evento": evento,
             "zona": zona,
             "timestamp": fecha_str,
-            "device": device_id,
-            "direccion":direccion
+            "device": device_id
         }
 
-        # # 🆕 Agregar dirección al payload
-        # try:
-        #     payload["direccion"] = obtener_direccion(float(lat), float(lon))
-        # except Exception as e:
-        #     print("⚠️ Error al obtener dirección:", str(e))
-        #     payload["direccion"] = "No disponible"
+        # 🆕 Agregar dirección al payload
+        try:
+            payload["direccion"] = obtener_direccion(float(lat), float(lon))
+        except Exception as e:
+            print("⚠️ Error al obtener dirección:", str(e))
+            payload["direccion"] = "No disponible"
 
         try:
             # Preparar dataframe para predicción
@@ -265,15 +263,15 @@ def obtener_ultima_ubicacion():
         ultima = datos[0]
         print("📍 Última ubicación registrada:", ultima)
 
-         # 🆕 Convertir latitud y longitud a dirección
-        # try:
-        #     lat = float(ultima.get("latitud"))
-        #     lon = float(ultima.get("longitud"))
-        #     direccion =
-        #     ultima["direccion"] = direccion
-        # except Exception as e:
-        #     print("⚠️ No se pudo obtener dirección:", str(e))
-        #     ultima["direccion"] = "No disponible"
+         #🆕 Convertir latitud y longitud a dirección
+        try:
+            lat = float(ultima.get("latitud"))
+            lon = float(ultima.get("longitud"))
+            direccion = obtener_direccion(lat, lon)
+            ultima["direccion"] = direccion
+        except Exception as e:
+            print("⚠️ No se pudo obtener dirección:", str(e))
+            ultima["direccion"] = "No disponible"
 
         return jsonify(ultima), 200
 
