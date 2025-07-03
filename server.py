@@ -10,6 +10,7 @@ from geopy.extra.rate_limiter import RateLimiter
 from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from twilio.twiml.messaging_response import MessagingResponse
+import openrouteservice
 
 # ========================
 # 🔁 FUNCIONES AUXILIARES
@@ -41,14 +42,6 @@ ARGENTINA_TZ = timezone(timedelta(hours=-3))
 geolocator = Nominatim(user_agent="mi-app-coordenadas")  # podés personalizar el nombre
 reverse = RateLimiter(geolocator.reverse, min_delay_seconds=1)
 
-def obtener_direccion(lat, lon):
-    try:
-        location = reverse((lat, lon), language='es')
-        return location.address if location else "Dirección no encontrada"
-    except Exception as e:
-        print("⚠️ Error al obtener dirección:", str(e))
-        return "Error al obtener dirección"
-
 # Variables de entorno o directas
 TWILIO_SID = os.getenv("TWILIO_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
@@ -63,6 +56,69 @@ CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+
+
+def obtener_direccion(lat, lon):
+    try:
+        location = reverse((lat, lon), language='es')
+        return location.address if location else "Dirección no encontrada"
+    except Exception as e:
+        print("⚠️ Error al obtener dirección:", str(e))
+        return "Error al obtener dirección"
+    
+
+def obtener_ubicaciones_por_dia(dia_semana_nombre):
+    """
+    Consulta Supabase para obtener las ubicaciones filtrando por día de la semana
+    dia_semana_nombre: nombre del día en inglés con inicial mayúscula, ej: 'Monday'
+    """
+    headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    # Traer datos (puede ser mucho, luego optimizar paginación)
+    url = f"{SUPABASE_URL}/rest/v1/ubicaciones?select=latitud,longitud,timestamp,direccion&order=timestamp.asc"
+    response = requests.get(url, headers=headers)
+
+    if response.status_code != 200:
+        return None, f"Error al obtener datos: {response.status_code}"
+
+    datos = response.json()
+    if not datos:
+        return None, "No hay datos"
+
+    # Convertir a DataFrame
+    df = pd.DataFrame(datos)
+    df['timestamp'] = pd.to_datetime(df['timestamp'])
+    df['dia_semana'] = df['timestamp'].dt.day_name()
+
+    # Filtrar por día pedido
+    df_filtrado = df[df['dia_semana'] == dia_semana_nombre]
+
+    # Filtrar coordenadas válidas (limpio)
+    df_filtrado = df_filtrado[
+        (df_filtrado['latitud'] < 0) & (df_filtrado['latitud'] > -60) &
+        (df_filtrado['longitud'] < -50) & (df_filtrado['longitud'] > -70)
+    ]
+
+    if df_filtrado.empty:
+        return None, "No hay datos para ese día"
+
+    # Ordenar por timestamp
+    df_filtrado = df_filtrado.sort_values('timestamp')
+
+    # Extraer lista de coordenadas para ORS
+    coords = df_filtrado[['longitud', 'latitud']].values.tolist()
+
+    # Reducir puntos si hay muchos
+    if len(coords) > 50:
+        coords = coords[::5]
+
+    return coords, None
+
 
 @app.route('/')
 def home():
@@ -263,3 +319,34 @@ def responder_alerta():
     except Exception as e:
         print("❌ Error procesando respuesta:", str(e))
         return "Error", 500
+    
+@app.route('/ruta/<dia>', methods=['GET'])
+def ruta_dia(dia):
+    dias_validos = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+
+    dia = dia.lower()
+    if dia not in dias_validos:
+        return jsonify({"error": "Día inválido, usar monday a friday"}), 400
+
+    # Convertir a formato con mayúscula inicial para comparar
+    dia_nombre = dia.capitalize()
+
+    # Obtener coordenadas filtradas
+    coordenadas, error = obtener_ubicaciones_por_dia(dia_nombre)
+    if error:
+        return jsonify({"error": error}), 404
+
+    # Instanciar cliente ORS
+    API_KEY = os.getenv("ORS_API_KEY")  # asegurate que esté en variables de entorno
+    client = openrouteservice.Client(key=API_KEY)
+
+    try:
+        ruta = client.directions(
+            coordinates=coordenadas,
+            profile='foot-walking',
+            format='geojson'
+        )
+    except openrouteservice.exceptions.ApiError as e:
+        return jsonify({"error": f"Error ORS: {str(e)}"}), 500
+
+    return jsonify(ruta)
