@@ -402,19 +402,15 @@ def responder_alerta():
 @app.route('/ruta/<dia>', methods=['GET'])
 def ruta_dia(dia):
     dias_validos = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
-
     dia = dia.lower()
     if dia not in dias_validos:
         return jsonify({"error": "Día inválido, usar monday a friday"}), 400
-
     dia_nombre = dia.capitalize()
 
-    # Obtener coordenadas Y el dataframe filtrado por ese día
-    coordenadas, df_filtrado, error = obtener_ubicaciones_por_dia(dia_nombre)  # 🔁 Vemos esto abajo
+    coordenadas, df_filtrado, error = obtener_ubicaciones_por_dia(dia_nombre)
     if error:
         return jsonify({"error": error}), 404
 
-    # Instanciar cliente ORS
     API_KEY = os.getenv("ORS_API_KEY")
     client = openrouteservice.Client(key=API_KEY)
 
@@ -427,38 +423,17 @@ def ruta_dia(dia):
     except openrouteservice.exceptions.ApiError as e:
         return jsonify({"error": f"Error ORS: {str(e)}"}), 500
 
-    # Crear el mapa con folium
-    m = folium.Map(location=coordenadas[0][::-1], zoom_start=14)
-
-    # Agregar ruta
-    folium.GeoJson(
-        ruta,
-        name='Ruta ORS',
-        style_function=lambda x: {
-            'color': 'green',
-            'weight': 4,
-            'opacity': 0.8
-        }
-    ).add_to(m)
-
-    # Agregar puntos originales con hora y dirección
+    # Además devolver los puntos con info que querés mostrar en popups
+    puntos_info = []
     for _, row in df_filtrado.iterrows():
-        hora_minuto = row['timestamp'].strftime('%H:%M')
-        direccion = row['direccion'] if pd.notnull(row['direccion']) else "Sin dirección"
+        puntos_info.append({
+            "lat": row['latitud'],
+            "lng": row['longitud'],
+            "hora": row['timestamp'].strftime('%H:%M'),
+            "direccion": row['direccion'] if pd.notnull(row['direccion']) else "Sin dirección"
+        })
 
-        popup_text = f"<b>Hora:</b> {hora_minuto}<br><b>Dirección:</b> {direccion}"
-
-        folium.CircleMarker(
-            location=[row['latitud'], row['longitud']],
-            radius=4,
-            color='blue',
-            fill=True,
-            fill_opacity=0.8,
-            popup=folium.Popup(popup_text, max_width=300)
-        ).add_to(m)
-
-    # Guardar el mapa como HTML temporal
-    archivo_mapa = f"mapa_{dia}.html"
-    m.save(archivo_mapa)
-
-    return send_file(archivo_mapa)
+    return jsonify({
+        "ruta": ruta,
+        "puntos": puntos_info
+    })
