@@ -11,6 +11,10 @@ from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from twilio.twiml.messaging_response import MessagingResponse
 import openrouteservice
+import folium
+from flask import send_file
+
+
 
 # ========================
 # 🔁 FUNCIONES AUXILIARES
@@ -68,6 +72,57 @@ def obtener_direccion(lat, lon):
         return "Error al obtener dirección"
     
 
+# def obtener_ubicaciones_por_dia(dia_semana_nombre):
+#     """
+#     Consulta Supabase para obtener las ubicaciones filtrando por día de la semana
+#     dia_semana_nombre: nombre del día en inglés con inicial mayúscula, ej: 'Monday'
+#     """
+#     headers = {
+#         "apikey": SUPABASE_KEY,
+#         "Authorization": f"Bearer {SUPABASE_KEY}",
+#         "Content-Type": "application/json"
+#     }
+
+#     # Traer datos (puede ser mucho, luego optimizar paginación)
+#     url = f"{SUPABASE_URL}/rest/v1/ubicaciones?select=latitud,longitud,timestamp,direccion&order=timestamp.asc"
+#     response = requests.get(url, headers=headers)
+
+#     if response.status_code != 200:
+#         return None, f"Error al obtener datos: {response.status_code}"
+
+#     datos = response.json()
+#     if not datos:
+#         return None, "No hay datos"
+
+#     # Convertir a DataFrame
+#     df = pd.DataFrame(datos)
+#     df['timestamp'] = pd.to_datetime(df['timestamp'])
+#     df['dia_semana'] = df['timestamp'].dt.day_name()
+
+#     # Filtrar por día pedido
+#     df_filtrado = df[df['dia_semana'] == dia_semana_nombre]
+
+#     # Filtrar coordenadas válidas (limpio)
+#     df_filtrado = df_filtrado[
+#         (df_filtrado['latitud'] < 0) & (df_filtrado['latitud'] > -60) &
+#         (df_filtrado['longitud'] < -50) & (df_filtrado['longitud'] > -70)
+#     ]
+
+#     if df_filtrado.empty:
+#         return None, "No hay datos para ese día"
+
+#     # Ordenar por timestamp
+#     df_filtrado = df_filtrado.sort_values('timestamp')
+
+#     # Extraer lista de coordenadas para ORS
+#     coords = df_filtrado[['longitud', 'latitud']].values.tolist()
+
+#     # Reducir puntos si hay muchos
+#     if len(coords) > 50:
+#         coords = coords[::5]
+
+#     return coords, None
+
 def obtener_ubicaciones_por_dia(dia_semana_nombre):
     """
     Consulta Supabase para obtener las ubicaciones filtrando por día de la semana
@@ -79,45 +134,38 @@ def obtener_ubicaciones_por_dia(dia_semana_nombre):
         "Content-Type": "application/json"
     }
 
-    # Traer datos (puede ser mucho, luego optimizar paginación)
     url = f"{SUPABASE_URL}/rest/v1/ubicaciones?select=latitud,longitud,timestamp,direccion&order=timestamp.asc"
     response = requests.get(url, headers=headers)
 
     if response.status_code != 200:
-        return None, f"Error al obtener datos: {response.status_code}"
+        return None, None, f"Error al obtener datos: {response.status_code}"
 
     datos = response.json()
     if not datos:
-        return None, "No hay datos"
+        return None, None, "No hay datos"
 
-    # Convertir a DataFrame
     df = pd.DataFrame(datos)
     df['timestamp'] = pd.to_datetime(df['timestamp'])
     df['dia_semana'] = df['timestamp'].dt.day_name()
 
-    # Filtrar por día pedido
     df_filtrado = df[df['dia_semana'] == dia_semana_nombre]
 
-    # Filtrar coordenadas válidas (limpio)
     df_filtrado = df_filtrado[
         (df_filtrado['latitud'] < 0) & (df_filtrado['latitud'] > -60) &
         (df_filtrado['longitud'] < -50) & (df_filtrado['longitud'] > -70)
     ]
 
     if df_filtrado.empty:
-        return None, "No hay datos para ese día"
+        return None, None, "No hay datos para ese día"
 
-    # Ordenar por timestamp
     df_filtrado = df_filtrado.sort_values('timestamp')
+    coords = df_filtrado[['longitud', 'latitud']].dropna().values.tolist()
 
-    # Extraer lista de coordenadas para ORS
-    coords = df_filtrado[['longitud', 'latitud']].values.tolist()
-
-    # Reducir puntos si hay muchos
     if len(coords) > 50:
         coords = coords[::5]
 
-    return coords, None
+    return coords, df_filtrado, None
+
 
 
 @app.route('/')
@@ -320,6 +368,37 @@ def responder_alerta():
         print("❌ Error procesando respuesta:", str(e))
         return "Error", 500
     
+# @app.route('/ruta/<dia>', methods=['GET'])
+# def ruta_dia(dia):
+#     dias_validos = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+
+#     dia = dia.lower()
+#     if dia not in dias_validos:
+#         return jsonify({"error": "Día inválido, usar monday a friday"}), 400
+
+#     # Convertir a formato con mayúscula inicial para comparar
+#     dia_nombre = dia.capitalize()
+
+#     # Obtener coordenadas filtradas
+#     coordenadas, error = obtener_ubicaciones_por_dia(dia_nombre)
+#     if error:
+#         return jsonify({"error": error}), 404
+
+#     # Instanciar cliente ORS
+#     API_KEY = os.getenv("ORS_API_KEY")  # asegurate que esté en variables de entorno
+#     client = openrouteservice.Client(key=API_KEY)
+
+#     try:
+#         ruta = client.directions(
+#             coordinates=coordenadas,
+#             profile='foot-walking',
+#             format='geojson'
+#         )
+#     except openrouteservice.exceptions.ApiError as e:
+#         return jsonify({"error": f"Error ORS: {str(e)}"}), 500
+
+#     return jsonify(ruta)
+
 @app.route('/ruta/<dia>', methods=['GET'])
 def ruta_dia(dia):
     dias_validos = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
@@ -328,16 +407,15 @@ def ruta_dia(dia):
     if dia not in dias_validos:
         return jsonify({"error": "Día inválido, usar monday a friday"}), 400
 
-    # Convertir a formato con mayúscula inicial para comparar
     dia_nombre = dia.capitalize()
 
-    # Obtener coordenadas filtradas
-    coordenadas, error = obtener_ubicaciones_por_dia(dia_nombre)
+    # Obtener coordenadas Y el dataframe filtrado por ese día
+    coordenadas, df_filtrado, error = obtener_ubicaciones_por_dia(dia_nombre)  # 🔁 Vemos esto abajo
     if error:
         return jsonify({"error": error}), 404
 
     # Instanciar cliente ORS
-    API_KEY = os.getenv("ORS_API_KEY")  # asegurate que esté en variables de entorno
+    API_KEY = os.getenv("ORS_API_KEY")
     client = openrouteservice.Client(key=API_KEY)
 
     try:
@@ -349,4 +427,38 @@ def ruta_dia(dia):
     except openrouteservice.exceptions.ApiError as e:
         return jsonify({"error": f"Error ORS: {str(e)}"}), 500
 
-    return jsonify(ruta)
+    # Crear el mapa con folium
+    m = folium.Map(location=coordenadas[0][::-1], zoom_start=14)
+
+    # Agregar ruta
+    folium.GeoJson(
+        ruta,
+        name='Ruta ORS',
+        style_function=lambda x: {
+            'color': 'green',
+            'weight': 4,
+            'opacity': 0.8
+        }
+    ).add_to(m)
+
+    # Agregar puntos originales con hora y dirección
+    for _, row in df_filtrado.iterrows():
+        hora_minuto = row['timestamp'].strftime('%H:%M')
+        direccion = row['direccion'] if pd.notnull(row['direccion']) else "Sin dirección"
+
+        popup_text = f"<b>Hora:</b> {hora_minuto}<br><b>Dirección:</b> {direccion}"
+
+        folium.CircleMarker(
+            location=[row['latitud'], row['longitud']],
+            radius=4,
+            color='blue',
+            fill=True,
+            fill_opacity=0.8,
+            popup=folium.Popup(popup_text, max_width=300)
+        ).add_to(m)
+
+    # Guardar el mapa como HTML temporal
+    archivo_mapa = f"mapa_{dia}.html"
+    m.save(archivo_mapa)
+
+    return send_file(archivo_mapa)
