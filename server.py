@@ -11,8 +11,6 @@ from datetime import datetime, timezone, timedelta
 from flask_cors import CORS
 from twilio.twiml.messaging_response import MessagingResponse
 import openrouteservice
-import folium
-from flask import send_file
 
 
 
