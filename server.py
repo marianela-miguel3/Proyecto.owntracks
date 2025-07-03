@@ -550,7 +550,7 @@ def recibir_ubicacion():
                     client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
                     mensaje_alerta = f"🚨 ALERTA: Anomalía detectada\n" \
                                       f"🕒 Fecha y hora: {fecha_str}\n" \
-                                      f"https://www.google.com/maps?q={lat},{lon}\n" \
+                                      f"https://www.google.com/maps?q={lat},{lon}. \n" \
                                       f"¿Confirmás que es una anomalía?\n" \
                                       f"Respondé *SI* para activar el protocolo de seguridad o *NO* para ignorar."
                     sms = client.messages.create(
