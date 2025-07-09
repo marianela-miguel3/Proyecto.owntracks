@@ -176,6 +176,8 @@ def recibir_ubicacion():
             }
             df = pd.DataFrame([dato])
             df_proc = extraer_variables(df)
+            df.replace({'null': np.nan, 'NULL': np.nan}, inplace=True)
+
             print("🧪 DataFrame procesado:\n", df_proc.to_string())
 
             # Predicción general
