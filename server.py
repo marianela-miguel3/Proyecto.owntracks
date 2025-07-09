@@ -29,10 +29,10 @@ def extraer_variables(df):
 # ========================
 # 🚀 CARGA DE MODELOS
 # ========================
-modelo_general = joblib.load("modelo_general.joblib")
-transformer_general = joblib.load("transformer_general.joblib")
-modelo_horario = joblib.load("modelo_horario.joblib")
-scaler_horario = joblib.load("scaler_horario.joblib")
+modelo_general = joblib.load("modelo_general_.joblib")
+transformer_general = joblib.load("transformer_general_.joblib")
+modelo_horario = joblib.load("modelo_horario_.joblib")
+scaler_horario = joblib.load("scaler_horario_.joblib")
 
 # ========================
 # 🌎 CONFIG SERVIDOR
