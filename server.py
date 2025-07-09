@@ -57,7 +57,10 @@ CORS(app, resources={r"/*": {"origins": "https://project-ifts.netlify.app"}})
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 
-
+def limpiar_nulls(valor):
+    if isinstance(valor, str) and valor.strip().lower() in ['null', 'none']:
+        return None
+    return valor
 
 def obtener_direccion(lat, lon):
     try:
@@ -166,6 +169,9 @@ def recibir_ubicacion():
             payload["direccion"] = "No disponible"
 
         try:
+
+            evento = limpiar_nulls(data.get("evento", None))
+            zona = limpiar_nulls(data.get("zona", None))
             # Preparar dataframe para predicción
             dato = {
                 "latitud": lat,
@@ -176,7 +182,6 @@ def recibir_ubicacion():
             }
             df = pd.DataFrame([dato])
             df_proc = extraer_variables(df)
-            df.replace({'null': np.nan, 'NULL': np.nan}, inplace=True)
 
             print("🧪 DataFrame procesado:\n", df_proc.to_string())
 
