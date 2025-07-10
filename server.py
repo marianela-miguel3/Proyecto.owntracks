@@ -137,8 +137,16 @@ def recibir_ubicacion():
         print("📥 Datos recibidos:", data)
 
         # Extraer datos esperados del formato manual
-        lat = data.get("latitud")
-        lon = data.get("longitud")
+        # lat = data.get("latitud")
+        # lon = data.get("longitud")
+                # ✅ Parseo robusto de lat/lon con punto o coma
+        lat_raw = data.get("latitud")
+        lon_raw = data.get("longitud")
+        try:
+            lat = float(str(lat_raw).replace(',', '.'))
+            lon = float(str(lon_raw).replace(',', '.'))
+        except:
+            return jsonify({"error": "Latitud o longitud inválidas"}), 400
         timestamp_str = data.get("timestamp")
         evento = data.get("evento", None)
         zona = data.get("zona", None)
