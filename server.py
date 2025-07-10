@@ -184,8 +184,8 @@ def recibir_ubicacion():
 
             # Correcciones antes de extraer variables
             df.replace({'null': np.nan, 'NULL': np.nan}, inplace=True)
-            df['latitud'] = df['latitud'].astype(str).str.replace(',', '.')
-            df['longitud'] = df['longitud'].astype(str).str.replace(',', '.')
+            # df['latitud'] = df['latitud'].astype(str).str.replace(',', '.')
+            # df['longitud'] = df['longitud'].astype(str).str.replace(',', '.')
             df_proc = extraer_variables(df)
 
             print("🧪 DataFrame procesado:\n", df_proc.to_string())
